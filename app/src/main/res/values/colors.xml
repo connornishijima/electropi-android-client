@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background">#181818</color>
+    <color name="fontColor">#AAAAAA</color>
+    <color name="textboxBg">#080808</color>
+    <color name="buttonFontColor">#181818</color>
+    <color name="highlightColor">#00FFBE</color>
+    <color name="confirmColor">#E1D17C</color>
+</resources>
