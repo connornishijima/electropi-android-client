@@ -1,10 +1,13 @@
 package com.technicallycovered.electropimonitor;
 
 import android.app.IntentService;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
@@ -14,7 +17,6 @@ import android.util.Log;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.util.EntityUtils;
 
 public class PingService extends IntentService {
 
@@ -22,23 +24,12 @@ public class PingService extends IntentService {
 
     public PingService() {
         super("PingService");
-        setGlobalSecValue(10000);
-        wifiWait(10000,false);
-        }
-
-
-    private int mGlobalSecValue;
-    public int getGlobalSecValue() {
-        return mGlobalSecValue;
-    }
-    public void setGlobalSecValue(int num) {
-        mGlobalSecValue = num;
+        wifiWait(0);
     }
 
     @Override
     protected void onHandleIntent(Intent intent) {
         if (!isLooping) {
-            setGlobalSecValue(1);
             isLooping = true;
             Log.i(Constants.LOG_TAG, "Starting initial run");
             mPrefs = PreferenceManager.getDefaultSharedPreferences(PingService.this);
@@ -51,29 +42,16 @@ public class PingService extends IntentService {
             public void run()
             {
                 try {
-                    if (isWiFiConnected()) {
-
-                        postWait(0);
-                        int milliseconds = (getGlobalSecValue() * 1000);
-                        keepGoing(milliseconds);
-                    }
+                    postWait(0);
                 } catch (Exception e) {
                     e.printStackTrace();
-                    int milliseconds = (getGlobalSecValue() * 1000);
-                    keepGoing(milliseconds);
                 }
             }
         }, time_ms);
     }
 
-    public void wifiWait(final int time_ms, boolean noWifi)
+    public void wifiWait(final int time_ms)
     {
-        if(noWifi == true){
-            if (!isWiFiConnected()) {
-                //stopSelf();
-            }
-        }
-
         Handler handler = new Handler(Looper.getMainLooper());
         handler.postDelayed(new Runnable() {
             public void run()
@@ -81,11 +59,10 @@ public class PingService extends IntentService {
                 if (isWiFiConnected()) {
                     Log.i(Constants.LOG_TAG, "Wifi is up!");
 
-                    keepGoing(1000);
+                    keepGoing(0);
                 }
                 else {
-                    Log.i(Constants.LOG_TAG, "STILL NO WIFI, WHAT THE FUCK.");
-                    wifiWait(30000, true);
+                    Log.i(Constants.LOG_TAG, "STILL NO WIFI, WHAT THE FUCK. I LIKE WIFI. OH WELL.");
                 }
             }
         }, time_ms);
@@ -103,7 +80,6 @@ public class PingService extends IntentService {
                     @Override
                     protected Void doInBackground(Void... params) {
                             Log.d(Constants.LOG_TAG, "Running Job");
-                                Log.d(Constants.LOG_TAG, "Job has Wifi");
                                 String epiip = mPrefs.getString(Constants.EPiIP, "");
                                 String devName = mPrefs.getString(Constants.DEVICE_NAME, "");
                                 if (epiip.length() > 0 && devName.length() > 0) {
@@ -113,16 +89,6 @@ public class PingService extends IntentService {
                                         HttpGet get = new HttpGet(String.format(getURL, epiip, devName));
                                         client.execute(get);
                                         Log.d(Constants.LOG_TAG, "Sent checkIn to EPI");
-                                    } catch (Exception e) {
-                                        e.printStackTrace();
-                                    }
-                                    try {
-                                        HttpClient client = new DefaultHttpClient();
-                                        String getURL = "http://%s/checkIn.php?interval";
-                                        HttpGet get = new HttpGet(String.format(getURL, epiip));
-                                        int seconds = Integer.parseInt(EntityUtils.toString(client.execute(get).getEntity()));
-                                        setGlobalSecValue(seconds);
-                                        Log.d(Constants.LOG_TAG, "Got new interval ("+String.valueOf(seconds)+") from EPi");
                                     } catch (Exception e) {
                                         e.printStackTrace();
                                     }
@@ -141,10 +107,42 @@ public class PingService extends IntentService {
         ConnectivityManager connManager = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
         NetworkInfo mWifi = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
         if(mWifi.isConnected() == true){
-            return true;
+            String SSIDon = getWifiName(getApplicationContext()).replace("*","");
+            String SSID = mPrefs.getString(Constants.SSID, "");
+            Log.d(Constants.LOG_TAG, "Connected to "+SSIDon+", Saved is "+SSID);
+            if(String.valueOf(SSID).trim().contentEquals(String.valueOf(SSIDon).trim())) {
+                Log.d(Constants.LOG_TAG, "We're home!");
+                return true;
+            }
+            else{
+                Log.d(Constants.LOG_TAG, "We've got WiFi, but we're not home.");
+                return false;
+            }
         }
         else{
             return false;
         }
+    }
+
+    public String getWifiName(Context context) {
+        try {
+            mPrefs = PreferenceManager.getDefaultSharedPreferences(PingService.this);
+
+            WifiManager manager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+            if (manager.isWifiEnabled()) {
+                WifiInfo wifiInfo = manager.getConnectionInfo();
+                if (wifiInfo != null) {
+                    NetworkInfo.DetailedState state = WifiInfo.getDetailedStateOf(wifiInfo.getSupplicantState());
+                    if (state == NetworkInfo.DetailedState.CONNECTED || state == NetworkInfo.DetailedState.OBTAINING_IPADDR) {
+                        return wifiInfo.getSSID().replace('"','*');
+                    }
+                }
+            }
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return null;
     }
 }

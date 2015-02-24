@@ -26,11 +26,13 @@ public class ConfigFragment extends Fragment {
         final View rootView = inflater.inflate(R.layout.fragment_main, container, false);
         final EditText devName = (EditText) rootView.findViewById(R.id.deviceName);
         final EditText ipAddress = (EditText) rootView.findViewById(R.id.epiIp);
+        final EditText netSSID = (EditText) rootView.findViewById(R.id.netSSID);
 
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
 
         devName.setText(prefs.getString(Constants.DEVICE_NAME,""));
         ipAddress.setText(prefs.getString(Constants.EPiIP, ""));
+        netSSID.setText(prefs.getString(Constants.SSID, ""));
 
         rootView.findViewById(R.id.button).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -38,6 +40,7 @@ public class ConfigFragment extends Fragment {
                 SharedPreferences.Editor edit = prefs.edit();
                 edit.putString(Constants.DEVICE_NAME, devName.getText().toString());
                 edit.putString(Constants.EPiIP, ipAddress.getText().toString());
+                edit.putString(Constants.SSID, netSSID.getText().toString());
                 edit.apply();
                 rootView.findViewById(R.id.settingsSaved).setVisibility(View.VISIBLE);
                 ((MainActivity)getActivity()).goToWebView();

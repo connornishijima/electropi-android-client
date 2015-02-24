@@ -18,16 +18,12 @@ public class BootReceiver extends BroadcastReceiver {
             Log.d(Constants.LOG_TAG, "BootReceiver BOOT_COMPLETED");
 
             Intent alarmIntent = new Intent(context, BootReceiver.class);
-
             PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, alarmIntent, 0);
-
             AlarmManager manager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+            int interval = 30000;
+            manager.setInexactRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), interval, pendingIntent);
 
-            int interval = 60000;
-
-            manager.setInexactRepeating(AlarmManager.RTC, System.currentTimeMillis(), interval, pendingIntent);
-
-            Log.i(Constants.LOG_TAG, "Alarm Set");
+            Log.i(Constants.LOG_TAG, "EP checkIn Alarm Set");
         }
 
         Log.i(Constants.LOG_TAG, "Starting service");
@@ -35,8 +31,5 @@ public class BootReceiver extends BroadcastReceiver {
 
         context.stopService(myIntent);
         context.startService(myIntent);
-        Log.i(Constants.LOG_TAG, "Service started.");
     }
-
-
 }
